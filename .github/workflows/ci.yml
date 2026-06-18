@@ -1,0 +1,105 @@
+name: CI — Lint & Test
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    name: Lint & Test Lambda
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('lambda/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r lambda/requirements.txt
+          pip install pytest pytest-mock ruff
+
+      - name: Lint with Ruff
+        run: ruff check lambda/src/
+
+      - name: Run tests
+        env:
+          RECIPIENT_EMAIL: test@example.com
+          SENDER_EMAIL: sender@example.com
+          GROQ_API_KEY_PARAM: /tech-trend-radar/groq-api-key
+          AWS_DEFAULT_REGION: us-east-1
+        run: pytest tests/ -v --tb=short
+
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7.5"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ secrets.AWS_REGION }}
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: terraform
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: terraform
+        env:
+          TF_VAR_recipient_email: ${{ secrets.RECIPIENT_EMAIL }}
+          TF_VAR_sender_email:    ${{ secrets.SENDER_EMAIL }}
+          TF_VAR_groq_api_key:    ${{ secrets.GROQ_API_KEY }}
+          TF_VAR_ecr_image_uri:   ${{ secrets.ECR_REPOSITORY_URL }}:latest
+        run: terraform plan -no-color -out=tfplan
+
+      - name: Comment Plan on PR
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = require('child_process').execSync(
+              'cd terraform && terraform show -no-color tfplan', { encoding: 'utf8' }
+            );
+            const body = `## 🏗️ Terraform Plan\n\`\`\`hcl\n${plan.slice(0, 60000)}\n\`\`\``;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body
+            });

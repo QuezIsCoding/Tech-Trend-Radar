@@ -1,0 +1,89 @@
+name: Deploy — Build & Release
+
+on:
+  push:
+    branches: [main]
+
+env:
+  AWS_REGION:     ${{ secrets.AWS_REGION }}
+  ECR_REPOSITORY: tech-trend-radar
+
+jobs:
+  build-and-push:
+    name: Build & Push Docker Image to ECR
+    runs-on: ubuntu-latest
+    outputs:
+      image_uri: ${{ steps.build.outputs.image_uri }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image
+        id: build
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG:    ${{ github.sha }}
+        run: |
+          IMAGE_URI="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          LATEST_URI="$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+
+          docker build -t "$IMAGE_URI" -t "$LATEST_URI" lambda/
+
+          docker push "$IMAGE_URI"
+          docker push "$LATEST_URI"
+
+          echo "image_uri=$IMAGE_URI" >> "$GITHUB_OUTPUT"
+          echo "✅ Pushed $IMAGE_URI"
+
+  terraform-apply:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    needs: build-and-push
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ secrets.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7.5"
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init
+
+      - name: Terraform Apply
+        working-directory: terraform
+        env:
+          TF_VAR_recipient_email: ${{ secrets.RECIPIENT_EMAIL }}
+          TF_VAR_sender_email:    ${{ secrets.SENDER_EMAIL }}
+          TF_VAR_groq_api_key:    ${{ secrets.GROQ_API_KEY }}
+          TF_VAR_ecr_image_uri:   ${{ needs.build-and-push.outputs.image_uri }}
+        run: terraform apply -auto-approve -input=false
+
+      - name: Deployment Summary
+        run: |
+          echo "## ✅ Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image:** ${{ needs.build-and-push.outputs.image_uri }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Region:** ${{ secrets.AWS_REGION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Schedule:** Every 2 days at 8:00 AM UTC" >> $GITHUB_STEP_SUMMARY
