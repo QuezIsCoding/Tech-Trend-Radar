@@ -31,7 +31,6 @@ resource "aws_lambda_function" "trend_radar" {
       RECIPIENT_EMAIL    = var.recipient_email
       SENDER_EMAIL       = var.sender_email
       GROQ_API_KEY_PARAM = aws_ssm_parameter.groq_api_key.name
-      AWS_REGION         = var.aws_region
       HN_TOP_N           = "30"
       GITHUB_TOP_N       = "10"
       REDDIT_TOP_N       = "15"
