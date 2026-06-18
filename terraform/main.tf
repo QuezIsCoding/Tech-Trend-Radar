@@ -10,7 +10,7 @@ terraform {
 
   # Remote state in S3 — bucket created separately (see README)
   backend "s3" {
-    bucket         = "your-terraform-state-bucket"   # replace before init
+    bucket         = "tech-trend-radar-tfstate-421600551047"   # replace before init
     key            = "tech-trend-radar/terraform.tfstate"
     region         = "us-east-1"
     encrypt        = true
