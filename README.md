@@ -2,8 +2,8 @@
 
 > An automated AI-powered intelligence tool that scrapes the hottest tech trends from across the internet and delivers a curated digest to your inbox every 2 days.
 
-[![CI](https://github.com/YOUR_USERNAME/tech-trend-radar/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/tech-trend-radar/actions/workflows/ci.yml)
-[![Deploy](https://github.com/YOUR_USERNAME/tech-trend-radar/actions/workflows/deploy.yml/badge.svg)](https://github.com/YOUR_USERNAME/tech-trend-radar/actions/workflows/deploy.yml)
+[![CI](https://github.com/QuezIsCoding/Tech-Trend-Radar/actions/workflows/ci.yml/badge.svg)](https://github.com/QuezIsCoding/Tech-Trend-Radar/actions/workflows/ci.yml)
+[![Deploy](https://github.com/QuezIsCoding/Tech-Trend-Radar/actions/workflows/deploy.yml/badge.svg)](https://github.com/QuezIsCoding/Tech-Trend-Radar/actions/workflows/deploy.yml)
 ![AWS](https://img.shields.io/badge/AWS-Lambda%20%7C%20SES%20%7C%20ECR-orange?logo=amazon-aws)
 ![Terraform](https://img.shields.io/badge/IaC-Terraform-7B42BC?logo=terraform)
 ![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python)
@@ -23,7 +23,7 @@ EventBridge (cron every 2 days)
         └──► Reddit API
         │
         ▼
-  Groq API (Llama 3 70B)
+  Groq API (Llama 3.3 70B)
   → Trend analysis & scoring
         │
         ▼
@@ -37,7 +37,7 @@ EventBridge (cron every 2 days)
 **AWS Services:** Lambda · EventBridge · SES · ECR · SSM Parameter Store · IAM · CloudWatch  
 **CI/CD:** GitHub Actions (lint → test → plan → build → deploy)  
 **IaC:** Terraform  
-**AI:** Groq API (Llama 3 70B — free tier)
+**AI:** Groq API (Llama 3.3 70B — free tier)
 
 ---
 
@@ -217,7 +217,7 @@ python -c "from lambda.src.handler import lambda_handler; lambda_handler({}, {})
 | Schedule | `terraform/variables.tf` → `schedule_expression` | Any EventBridge cron |
 | Number of items scraped | Lambda env vars `HN_TOP_N`, `REDDIT_TOP_N`, `GITHUB_TOP_N` | Set in `lambda.tf` |
 | Add a new source | `lambda/src/handler.py` | Add a `fetch_*()` function and include in `raw_data` |
-| Change LLM model | `handler.py` → `analyze_with_groq()` | Swap `llama3-70b-8192` for any Groq-supported model |
+| Change LLM model | `handler.py` → `analyze_with_groq()` | Swap `llama-3.3-70b-versatile` for any Groq-supported model |
 | Email styling | `handler.py` → `build_email_html()` | Edit the inline HTML/CSS |
 
 ---
