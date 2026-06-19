@@ -159,6 +159,26 @@ class TestAnalyzeWithGroq:
         assert len(result) > 50
 
 
+class TestVerifyAnalysis:
+    def test_returns_verified_string(self, mock_groq_analysis):
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.return_value = MagicMock(
+            choices=[MagicMock(message=MagicMock(content=mock_groq_analysis))]
+        )
+
+        with patch("handler.Groq", return_value=mock_client):
+            import handler
+            raw_data = {
+                "hn": [{"title": "Llama 4 beats GPT-5 on all benchmarks"}],
+                "github": [],
+                "reddit": [],
+            }
+            result = handler.verify_analysis(mock_groq_analysis, raw_data, "fake-key")
+
+        assert "🔥" in result
+        assert len(result) > 50
+
+
 class TestBuildEmailHtml:
     def test_returns_subject_html_plain(self, mock_groq_analysis):
         import handler
@@ -172,6 +192,7 @@ class TestBuildEmailHtml:
 
 class TestLambdaHandler:
     @patch("handler.send_email")
+    @patch("handler.verify_analysis")
     @patch("handler.analyze_with_groq")
     @patch("handler.get_groq_key", return_value="fake-key")
     @patch("handler.fetch_reddit_tech")
@@ -184,6 +205,7 @@ class TestLambdaHandler:
         mock_reddit,
         mock_key,
         mock_analyze,
+        mock_verify,
         mock_send,
         mock_groq_analysis,
     ):
@@ -191,6 +213,7 @@ class TestLambdaHandler:
         mock_gh.return_value = [{"title": "user/repo", "description": "desc", "stars": 50, "language": "Go", "url": "http://github.com", "source": "GitHub Trending"}]
         mock_reddit.return_value = [{"title": "Test Reddit", "score": 200, "comments": 30, "url": "http://reddit.com", "source": "r/devops"}]
         mock_analyze.return_value = mock_groq_analysis
+        mock_verify.return_value = mock_groq_analysis
 
         import handler
         response = handler.lambda_handler({}, {})
@@ -199,6 +222,7 @@ class TestLambdaHandler:
         body = json.loads(response["body"])
         assert body["message"] == "Digest sent successfully"
         mock_send.assert_called_once()
+        mock_verify.assert_called_once()
 
     @patch("handler.fetch_hacker_news", return_value=[])
     @patch("handler.fetch_github_trending", return_value=[])
