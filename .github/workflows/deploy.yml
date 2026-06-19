@@ -35,17 +35,17 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG:    ${{ github.sha }}
         run: |
-          IMAGE_URI="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-          LATEST_URI="$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+          IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+          LATEST_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:latest"
 
           docker build --platform linux/amd64 --provenance=false \
-            -t "$IMAGE_URI" -t "$LATEST_URI" lambda/
+            -t "${IMAGE_URI}" -t "${LATEST_URI}" lambda/
 
-          docker push "$IMAGE_URI"
-          docker push "$LATEST_URI"
+          docker push "${IMAGE_URI}"
+          docker push "${LATEST_URI}"
 
-          echo "image_uri=$IMAGE_URI" >> "$GITHUB_OUTPUT"
-          echo "✅ Pushed $IMAGE_URI"
+          echo "image_uri=${IMAGE_URI}" >> "${GITHUB_OUTPUT}"
+          echo "Pushed ${IMAGE_URI}"
 
   terraform-apply:
     name: Terraform Apply
@@ -73,6 +73,9 @@ jobs:
         working-directory: terraform
         run: terraform init
 
+      - name: Debug image URI
+        run: echo "Image URI is ${{ needs.build-and-push.outputs.image_uri }}"
+
       - name: Terraform Apply
         working-directory: terraform
         env:
@@ -84,7 +87,7 @@ jobs:
 
       - name: Deployment Summary
         run: |
-          echo "## ✅ Deployment Complete" >> $GITHUB_STEP_SUMMARY
-          echo "- **Image:** ${{ needs.build-and-push.outputs.image_uri }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Region:** ${{ secrets.AWS_REGION }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Schedule:** Every 2 days at 8:00 AM UTC" >> $GITHUB_STEP_SUMMARY
+          echo "## Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "- Image: ${{ needs.build-and-push.outputs.image_uri }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Region: ${{ secrets.AWS_REGION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Schedule: Every 2 days at 8:00 AM UTC" >> $GITHUB_STEP_SUMMARY
