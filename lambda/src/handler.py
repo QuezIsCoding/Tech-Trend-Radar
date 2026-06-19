@@ -8,7 +8,7 @@ import json
 import logging
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 
 import boto3
 import requests
@@ -156,7 +156,7 @@ def analyze_with_groq(raw_data: dict, groq_key: str) -> str:
     github_repos = [f"- {r['title']} [{r.get('language', '')}]: {r.get('description', '')}" for r in raw_data["github"]]
     reddit_posts = [f"- [{s['source']}] {s['title']} (score: {s['score']})" for s in raw_data["reddit"][:20]]
 
-    date_str = datetime.now(datetime.UTC).strftime("%B %d, %Y")
+    date_str = datetime.now(timezone.utc).strftime("%B %d, %Y")
 
     prompt = f"""You are a senior tech analyst. Below is raw data scraped from Hacker News, GitHub Trending, and Reddit tech communities collected on {date_str}.
 
@@ -237,7 +237,7 @@ Return ONLY the verified trend blocks in the same format. Do not add commentary.
 
 def build_email_html(analysis: str, raw_data: dict) -> tuple[str, str, str]:
     """Build HTML + plain text email from the verified analysis."""
-    date_str = datetime.now(datetime.UTC).strftime("%B %d, %Y")
+    date_str = datetime.now(timezone.utc).strftime("%B %d, %Y")
     subject  = f"🔥 Tech Trend Radar — {date_str}"
 
     html_analysis = ""
@@ -323,7 +323,7 @@ def send_email(subject: str, html_body: str, plain_text: str) -> None:
 
 def lambda_handler(event, context):
     """Main Lambda entry point."""
-    logger.info("Tech Trend Radar triggered at %s", datetime.now(datetime.UTC).isoformat())
+    logger.info("Tech Trend Radar triggered at %s", datetime.now(timezone.utc).isoformat())
 
     try:
         # 1. Scrape all sources
