@@ -82,7 +82,7 @@ jobs:
           TF_VAR_recipient_email: ${{ secrets.RECIPIENT_EMAIL }}
           TF_VAR_sender_email:    ${{ secrets.SENDER_EMAIL }}
           TF_VAR_groq_api_key:    ${{ secrets.GROQ_API_KEY }}
-          TF_VAR_ecr_image_uri:   ${{ needs.build-and-push.outputs.image_uri }}
+          TF_VAR_ecr_image_uri:   ${{ secrets.ECR_REPOSITORY_URL }}:${{ github.sha }}
         run: terraform apply -auto-approve -input=false
 
       - name: Deployment Summary

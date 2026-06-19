@@ -362,3 +362,4 @@ def lambda_handler(event, context):
     except Exception as exc:
         logger.exception("Tech Trend Radar failed: %s", exc)
         raise
+    
